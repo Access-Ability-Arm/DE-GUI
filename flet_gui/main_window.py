@@ -57,8 +57,6 @@ class FletMainWindow:
     def _setup_app_menu(self):
         """Set up application menu bar"""
         self.page.appbar = ft.AppBar(
-            title=ft.Text("Access Ability Arm"),
-            center_title=False,
             bgcolor=ft.Colors.BLUE_GREY_800,  # Using ft.Colors (uppercase)
             actions=[
                 ft.PopupMenuButton(
