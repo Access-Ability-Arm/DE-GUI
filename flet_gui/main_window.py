@@ -59,7 +59,7 @@ class FletMainWindow:
         self.page.appbar = ft.AppBar(
             title=ft.Text("Access Ability Arm"),
             center_title=False,
-            bgcolor="#37474F",  # Blue Grey 800
+            bgcolor=ft.Colors.BLUE_GREY_800,  # Using ft.Colors (uppercase)
             actions=[
                 ft.PopupMenuButton(
                     items=[
