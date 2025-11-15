@@ -309,15 +309,20 @@ Once development tools are installed, you can build for different platforms:
 ### Desktop
 
 ```bash
-# macOS (requires Xcode + CocoaPods)
+# macOS (requires Xcode + CocoaPods) - build on macOS only
 make package-macos
 
-# Linux (requires standard build tools)
+# Linux (requires standard build tools) - build on Linux only
 make package-linux
 
-# Windows (requires Visual Studio Build Tools)
+# Windows (requires Visual Studio Build Tools) - build on Windows only
 make package-windows
 ```
+
+**Note:** Flutter/Flet do **not support cross-compilation** for desktop platforms. You must build on the target OS. For cross-platform builds from macOS, use:
+- **GitHub Actions** with Windows/Linux runners (recommended, free)
+- **Virtual Machines** (Parallels, VMware, VirtualBox)
+- **Cloud CI/CD** services (AppVeyor, CircleCI)
 
 ### Mobile
 
