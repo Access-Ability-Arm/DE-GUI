@@ -3,9 +3,24 @@ Face Landmark Detection
 Uses MediaPipe to track facial landmarks, specifically mouth points
 """
 
+import os
+import sys
+
 import cv2
-import mediapipe as mp
 import numpy as np
+
+# Suppress TensorFlow Lite warnings from MediaPipe
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+os.environ['GLOG_minloglevel'] = '3'
+
+# Temporarily suppress stderr during MediaPipe import
+stderr = sys.stderr
+sys.stderr = open(os.devnull, 'w')
+try:
+    import mediapipe as mp
+finally:
+    sys.stderr.close()
+    sys.stderr = stderr
 
 
 class FaceDetector:
