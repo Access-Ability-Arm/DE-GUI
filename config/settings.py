@@ -18,6 +18,10 @@ class AppConfig:
     segmentation_available: bool = False
     segmentation_model: Optional[str] = None  # 'yolov11' or 'maskrcnn'
 
+    # YOLOv11 model configuration
+    yolo_model_size: str = "m"  # 'n' (nano), 's' (small), 'm' (medium), 'l' (large), 'x' (xlarge)
+    # Medium (m) provides excellent accuracy while maintaining real-time performance on modern hardware
+
     # Detection settings
     detection_threshold: float = 0.5
 

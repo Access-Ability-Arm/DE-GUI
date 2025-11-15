@@ -21,13 +21,14 @@ class ImageProcessor(QtCore.QThread):
 
     ImageUpdate = QtCore.pyqtSignal(QtGui.QImage)
 
-    def __init__(self, display_width: int = 800, display_height: int = 650):
+    def __init__(self, display_width: int = 800, display_height: int = 650, callback=None):
         """
         Initialize image processor
 
         Args:
             display_width: Width for display scaling
             display_height: Height for display scaling
+            callback: Optional callback function for non-Qt frameworks (like Flet)
         """
         super(ImageProcessor, self).__init__()
         print("Image processor initialized")
@@ -35,6 +36,7 @@ class ImageProcessor(QtCore.QThread):
         self.display_width = display_width
         self.display_height = display_height
         self.thread_active = False
+        self.callback = callback  # For Flet or other non-Qt frameworks
 
         # Camera setup
         self.use_realsense = False
@@ -105,9 +107,13 @@ class ImageProcessor(QtCore.QThread):
                         processed_image, depth_frame
                     )
 
-                # Convert to Qt format and emit
+                # Convert to Qt format and emit/callback
                 qt_image = self._convert_to_qt_image(processed_image)
                 self.ImageUpdate.emit(qt_image)
+
+                # Also call callback if provided (for Flet)
+                if self.callback:
+                    self.callback(processed_image)  # Pass numpy array directly to callback
 
     def _capture_frame(self):
         """

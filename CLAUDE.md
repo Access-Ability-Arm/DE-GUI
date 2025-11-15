@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-DE-GUI is a PyQt6-based GUI application for the Drane Engineering assistive robotic arm. It integrates:
+DE-GUI is a cross-platform GUI application (Flet-based, PyQt6 legacy) for the Drane Engineering assistive robotic arm. It integrates:
 - Intel RealSense camera for depth sensing (optional)
 - **YOLOv11-seg** for real-time object detection and segmentation (recommended)
 - Mask R-CNN for object detection (legacy, slower)
@@ -47,17 +47,24 @@ pip install -r requirements.txt
 ## Running the Application
 
 ```bash
-# Main application (RECOMMENDED - flexible camera support)
+# Main application (DEFAULT - Flet, cross-platform)
 python main.py
+# Or run as web app:
+python main.py --web
+
+# Legacy PyQt6 version (TO BE DEPRECATED)
+python main_pyqt.py
 ```
 
 ### Application Features
 
-**main.py (ONLY VERSION - RECOMMENDED):**
+**main.py (DEFAULT - FLET VERSION):**
+- **UI Framework**: Flet (Material Design, cross-platform, web-capable)
 - **Camera**: Auto-detects RealSense OR standard webcam (MacBook FaceTime, USB webcam, Continuity Camera)
-- **Required**: MediaPipe, Ultralytics (auto-installed via requirements.txt)
+- **Required**: Flet, MediaPipe, Ultralytics (auto-installed via requirements.txt)
 - **Optional**: pyrealsense2 (enables depth sensing with RealSense camera)
-- **Object Detection**: YOLOv11-seg (auto-downloads ~6MB model on first run)
+- **Object Detection**: YOLOv11-seg (auto-downloads medium model ~50MB on first run)
+  - **Model Size**: Configurable in `config/settings.py` - nano/small/medium (default)/large/xlarge
   - **GPU Acceleration**: Automatically uses Apple Metal (MPS) on M-series Macs, CUDA on NVIDIA, or CPU
   - Much faster and more accurate than legacy Mask R-CNN
   - Falls back to Mask R-CNN if YOLOv11-seg unavailable
@@ -67,9 +74,14 @@ python main.py
   - Webcam only → Face tracking
 - **Toggle**: Press 'T' to switch between face tracking and object detection
 - **Fixed Reference Point**: Red circle shows depth at position (250, 100) when RealSense is active
-- Works on macOS, Windows, Linux
+- Works on macOS, Windows, Linux, and web browsers
 
-**Legacy versions (ARCHIVED):**
+**main_pyqt.py (LEGACY - TO BE DEPRECATED):**
+- PyQt6-based desktop application
+- Same core features as Flet version
+- Maintained for compatibility only
+
+**Archived versions:**
 - `archive/main-rd.py` - RealSense-only monolithic version
 - `archive/main_old.py` - Pre-refactoring monolithic version
 - `archive/measure_object_distance.py` - Standalone distance measurement utility

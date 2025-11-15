@@ -1,43 +1,51 @@
 #!/usr/bin/env python3
 """
-DE-GUI - Drane Engineering Assistive Robotic Arm GUI
-Main application entry point
+DE-GUI - Flet Version
+Modern cross-platform GUI for the Drane Engineering assistive robotic arm
 
-This application provides computer vision-powered control for an assistive
-robotic arm, featuring:
-- YOLOv11/v12 real-time object detection with Apple Metal GPU acceleration
+This is an alternative Flet-based GUI that provides the same functionality
+as the PyQt6 version with a more modern, cross-platform interface.
+
+Features:
+- YOLOv11 real-time object detection
 - MediaPipe face landmark tracking
 - RealSense depth sensing (optional)
 - Manual robotic arm controls
+- Cross-platform (desktop, web, mobile)
 """
 
 import sys
 import warnings
 
-from PyQt6 import QtWidgets
+import flet as ft
 
 # Suppress user warnings
 warnings.simplefilter("ignore", UserWarning)
 
-# Windows COM initialization settings
-sys.coinit_flags = 2
-
-# Import main window after PyQt setup
-from gui.main_window import MainWindow
+from flet_gui.main_window import FletMainWindow
 
 
-def main():
-    """Application entry point"""
-    # Create Qt application
-    app = QtWidgets.QApplication(sys.argv)
+def main(page: ft.Page):
+    """
+    Flet application entry point
 
-    # Create and show main window
-    window = MainWindow()
-    window.show()
+    Args:
+        page: Flet page object
+    """
+    # Create main window
+    window = FletMainWindow(page)
 
-    # Start event loop
-    sys.exit(app.exec())
+    # Handle cleanup on close
+    def on_window_close(e):
+        window.cleanup()
+
+    page.on_close = on_window_close
 
 
 if __name__ == "__main__":
-    main()
+    # Run Flet app
+    print("Starting DE-GUI (Flet version)...")
+    print("Press 'T' to toggle between face tracking and object detection")
+    print("Close the window to exit")
+
+    ft.app(target=main)

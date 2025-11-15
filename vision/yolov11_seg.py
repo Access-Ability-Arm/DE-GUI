@@ -143,9 +143,15 @@ class YOLOv11Seg:
         # Storage for detection results
         self.obj_boxes = []
         self.obj_classes = []
+        self.obj_confidences = []
         self.obj_centers = []
         self.obj_contours = []
         self.obj_masks = []
+
+        # Confidence smoothing - store history per track ID
+        self.confidence_history = {}  # {track_id: smoothed_confidence}
+        self.smoothing_alpha = 0.1  # Weight for new confidence (0.0 = ignore new, 1.0 = no smoothing)
+                                     # 0.1 = 10% new, 90% historical (effective window ~10-20 frames)
 
     def detect_objects_mask(self, bgr_frame):
         """
@@ -160,17 +166,21 @@ class YOLOv11Seg:
             contours: List of contours for each detection
             centers: List of (cx, cy) center points
         """
-        # Run inference
-        results = self.model.predict(
+        # Run inference with tracking for smoother video segmentation
+        # Tracker reduces jitter and provides more stable bounding boxes/masks
+        results = self.model.track(
             bgr_frame,
             conf=self.detection_threshold,
             verbose=False,
             device=self.device,
+            persist=True,  # Persist tracks between frames
+            tracker="bytetrack.yaml",  # Use ByteTrack for smooth tracking
         )
 
         # Clear previous results
         self.obj_boxes = []
         self.obj_classes = []
+        self.obj_confidences = []
         self.obj_centers = []
         self.obj_contours = []
         self.obj_masks = []
@@ -183,16 +193,42 @@ class YOLOv11Seg:
             confidences = result.boxes.conf.cpu().numpy()
             masks = result.masks.data.cpu().numpy()  # Segmentation masks
 
+            # Get track IDs if available (ByteTrack provides these)
+            track_ids = None
+            if result.boxes.id is not None:
+                track_ids = result.boxes.id.cpu().numpy()
+
             # Process each detection
             for i in range(len(boxes)):
                 x1, y1, x2, y2 = boxes[i].astype(int)
                 class_id = int(classes[i])
+                raw_confidence = float(confidences[i])
+
+                # Apply temporal smoothing to confidence score
+                track_id = int(track_ids[i]) if track_ids is not None else None
+
+                if track_id is not None:
+                    # Use exponential moving average for smoothing
+                    if track_id in self.confidence_history:
+                        # Smooth: new = alpha * current + (1-alpha) * previous
+                        confidence = (self.smoothing_alpha * raw_confidence +
+                                    (1 - self.smoothing_alpha) * self.confidence_history[track_id])
+                    else:
+                        # First time seeing this track, use raw confidence
+                        confidence = raw_confidence
+
+                    # Update history
+                    self.confidence_history[track_id] = confidence
+                else:
+                    # No track ID, use raw confidence
+                    confidence = raw_confidence
 
                 # Store box
                 self.obj_boxes.append([x1, y1, x2, y2])
 
-                # Store class
+                # Store class and confidence
                 self.obj_classes.append(class_id)
+                self.obj_confidences.append(confidence)
 
                 # Calculate center
                 cx = (x1 + x2) // 2
@@ -207,11 +243,31 @@ class YOLOv11Seg:
                 )
                 mask_uint8 = (mask_resized * 255).astype(np.uint8)
 
+                # Apply morphological operations for better continuity
+                # Close small gaps and remove noise
+                kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+                mask_uint8 = cv2.morphologyEx(mask_uint8, cv2.MORPH_CLOSE, kernel)
+                mask_uint8 = cv2.morphologyEx(mask_uint8, cv2.MORPH_OPEN, kernel)
+
+                # Apply Gaussian blur for smoother edges
+                mask_uint8 = cv2.GaussianBlur(mask_uint8, (5, 5), 0)
+
+                # Re-threshold after blur
+                _, mask_uint8 = cv2.threshold(mask_uint8, 127, 255, cv2.THRESH_BINARY)
+
                 # Find contours
                 contours, _ = cv2.findContours(
                     mask_uint8, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
                 )
+
+                # Keep only contours with significant area (filter noise)
+                min_area = 100  # Minimum 100 pixels
+                contours = [cnt for cnt in contours if cv2.contourArea(cnt) > min_area]
+
                 self.obj_contours.append(contours)
+
+                # Convert back to normalized mask for drawing
+                mask_resized = mask_uint8.astype(float) / 255.0
                 self.obj_masks.append(mask_resized)
 
         return self.obj_boxes, self.obj_classes, self.obj_contours, self.obj_centers
@@ -258,8 +314,8 @@ class YOLOv11Seg:
         Returns:
             bgr_frame: Image with info drawn
         """
-        for box, class_id, center in zip(
-            self.obj_boxes, self.obj_classes, self.obj_centers
+        for box, class_id, confidence, center, contours, mask in zip(
+            self.obj_boxes, self.obj_classes, self.obj_confidences, self.obj_centers, self.obj_contours, self.obj_masks
         ):
             x1, y1, x2, y2 = box
             cx, cy = center
@@ -268,13 +324,6 @@ class YOLOv11Seg:
             color = self.colors[class_id % len(self.colors)]
             color = (int(color[0]), int(color[1]), int(color[2]))
 
-            # Draw crosshairs at center
-            cv2.line(bgr_frame, (cx, y1), (cx, y2), color, 1)
-            cv2.line(bgr_frame, (x1, cy), (x2, cy), color, 1)
-
-            # Draw bounding box
-            cv2.rectangle(bgr_frame, (x1, y1), (x2, y2), color, 2)
-
             # Get class name
             class_name = (
                 self.classes[class_id]
@@ -282,33 +331,88 @@ class YOLOv11Seg:
                 else f"Class {class_id}"
             )
 
-            # Draw label background
-            label_height = 60 if depth_frame is not None else 30
-            cv2.rectangle(bgr_frame, (x1, y1), (x1 + 200, y1 + label_height), color, -1)
+            # Calculate dynamic label size based on text content
+            h, w = bgr_frame.shape[:2]
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            font_scale = 0.6
+            font_thickness = 2
+            padding = 10
 
-            # Draw class name
+            # Build label text
+            label_text = f"{class_name.capitalize()} {confidence*100:.0f}%"
+            (text_width, text_height), baseline = cv2.getTextSize(
+                label_text, font, font_scale, font_thickness
+            )
+
+            # Calculate label dimensions with padding
+            label_width = text_width + padding * 2
+            label_height = text_height + baseline + padding * 2
+
+            # Add extra height for depth text if available
+            if depth_frame is not None:
+                depth_text = "999.9 cm"  # Max width estimate
+                (depth_width, depth_height), _ = cv2.getTextSize(
+                    depth_text, font, 0.7, font_thickness
+                )
+                label_height += depth_height + padding
+                label_width = max(label_width, depth_width + padding * 2)
+
+            # Find actual mask pixels for better label positioning
+            # This ensures label is near actual object, not just bounding box
+            mask_bool = mask > 0.5
+            mask_y, mask_x = np.where(mask_bool)
+
+            if len(mask_y) > 0:
+                # Find top center of actual mask pixels
+                # Use median X for stability, min Y for top placement
+                top_y = int(np.min(mask_y))
+                center_x = int(np.median(mask_x))
+
+                # Position label slightly below and centered on top of mask
+                label_x = center_x - label_width // 2
+                label_y = top_y + 10  # 10 pixels below top of mask
+            else:
+                # Fallback to bounding box if mask is empty
+                label_x = x1 + (x2 - x1) // 2 - label_width // 2
+                label_y = y1 + 10
+
+            # Final screen bounds check
+            label_x = max(10, min(label_x, w - label_width - 10))
+            label_y = max(10, min(label_y, h - label_height - 10))
+
+            # Draw label background
+            cv2.rectangle(
+                bgr_frame,
+                (label_x, label_y),
+                (label_x + label_width, label_y + label_height),
+                color,
+                -1
+            )
+
+            # Draw class name with confidence
             cv2.putText(
                 bgr_frame,
-                class_name.capitalize(),
-                (x1 + 5, y1 + 20),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.6,
+                label_text,
+                (label_x + padding, label_y + text_height + padding),
+                font,
+                font_scale,
                 (255, 255, 255),
-                2,
+                font_thickness,
             )
 
             # Draw depth if available
             if depth_frame is not None:
                 try:
                     depth_mm = depth_frame[cy, cx]
+                    depth_text = f"{depth_mm / 10:.1f} cm"
                     cv2.putText(
                         bgr_frame,
-                        f"{depth_mm / 10:.1f} cm",
-                        (x1 + 5, y1 + 50),
-                        cv2.FONT_HERSHEY_SIMPLEX,
+                        depth_text,
+                        (label_x + padding, label_y + text_height + depth_height + padding * 2),
+                        font,
                         0.7,
                         (255, 255, 255),
-                        2,
+                        font_thickness,
                     )
                 except:
                     pass

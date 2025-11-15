@@ -11,7 +11,6 @@ from io import BytesIO
 import cv2
 import flet as ft
 import numpy as np
-from flet import icons
 from PIL import Image
 
 from config.settings import app_config
@@ -36,9 +35,9 @@ class FletMainWindow:
         self.page.title = "DE-GUI - Assistive Robotic Arm"
         self.page.theme_mode = ft.ThemeMode.LIGHT
         self.page.padding = 20
-        self.page.window_width = 1200
-        self.page.window_height = 800
-        self.page.window_resizable = False
+        self.page.window.width = 1280
+        self.page.window.height = 1000
+        self.page.window.resizable = True
 
         # Initialize components
         self.button_controller = None
@@ -66,9 +65,12 @@ class FletMainWindow:
 
     def _build_ui(self):
         """Build the Flet UI layout"""
-        # Video feed display
+        # Video feed display - create placeholder
+        # Create a minimal 1x1 transparent PNG as base64 placeholder
+        placeholder_base64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+
         self.video_feed = ft.Image(
-            src_base64="",
+            src_base64=placeholder_base64,
             width=800,
             height=650,
             fit=ft.ImageFit.CONTAIN,
@@ -103,7 +105,7 @@ class FletMainWindow:
         # Detection mode toggle button
         self.toggle_mode_btn = ft.ElevatedButton(
             text="Toggle Detection Mode (T)",
-            icon=icons.SWAP_HORIZ,
+            icon=ft.Icons.SWAP_HORIZ,
             on_click=lambda _: self._toggle_detection_mode(),
         )
 
@@ -118,7 +120,7 @@ class FletMainWindow:
                     ft.Container(
                         content=ft.Row(
                             [
-                                ft.Icon(icons.PRECISION_MANUFACTURING, size=40),
+                                ft.Icon(ft.Icons.PRECISION_MANUFACTURING, size=40),
                                 ft.Text(
                                     "DE-GUI Assistive Robotic Arm",
                                     size=24,
@@ -188,7 +190,7 @@ class FletMainWindow:
                         ft.Row(
                             [
                                 ft.IconButton(
-                                    icon=icons.REMOVE,
+                                    icon=ft.Icons.REMOVE,
                                     tooltip=f"{direction} negative",
                                     on_click=lambda e,
                                     d=direction: self._on_button_press(d, "neg"),
@@ -197,7 +199,7 @@ class FletMainWindow:
                                 ),
                                 ft.Icon(icon, size=30),
                                 ft.IconButton(
-                                    icon=icons.ADD,
+                                    icon=ft.Icons.ADD,
                                     tooltip=f"{direction} positive",
                                     on_click=lambda e,
                                     d=direction: self._on_button_press(d, "pos"),
@@ -244,10 +246,10 @@ class FletMainWindow:
                         size=20,
                         weight=ft.FontWeight.BOLD,
                     ),
-                    create_direction_controls("x", icons.SWAP_HORIZ),
-                    create_direction_controls("y", icons.SWAP_VERT),
-                    create_direction_controls("z", icons.HEIGHT),
-                    create_direction_controls("grip", icons.BACK_HAND),
+                    create_direction_controls("x", ft.Icons.SWAP_HORIZ),
+                    create_direction_controls("y", ft.Icons.SWAP_VERT),
+                    create_direction_controls("z", ft.Icons.HEIGHT),
+                    create_direction_controls("grip", ft.Icons.BACK_HAND),
                     grip_toggle,
                 ],
                 spacing=15,
@@ -264,10 +266,8 @@ class FletMainWindow:
         self.image_processor = ImageProcessor(
             display_width=800,
             display_height=650,
+            callback=self._update_video_feed,  # Use callback for Flet
         )
-
-        # Connect image update callback
-        self.image_processor.ImageUpdate.connect(self._update_video_feed)
 
         # Start processing thread
         self.image_processor.start()
@@ -303,23 +303,19 @@ class FletMainWindow:
         self.status_text.value = status_msg
         self.page.update()
 
-    def _update_video_feed(self, qt_image):
+    def _update_video_feed(self, img_array):
         """
         Update video feed with new frame
 
         Args:
-            qt_image: QImage from ImageProcessor
+            img_array: Numpy array (BGR format from OpenCV)
         """
         try:
-            # Convert QImage to numpy array
-            width = qt_image.width()
-            height = qt_image.height()
-            ptr = qt_image.bits()
-            ptr.setsize(height * width * 3)
-            img_array = np.frombuffer(ptr, np.uint8).reshape((height, width, 3))
+            # Convert BGR to RGB
+            img_rgb = cv2.cvtColor(img_array, cv2.COLOR_BGR2RGB)
 
-            # Convert RGB to PIL Image
-            pil_image = Image.fromarray(img_array)
+            # Convert to PIL Image
+            pil_image = Image.fromarray(img_rgb)
 
             # Convert to base64
             buffered = BytesIO()

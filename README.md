@@ -29,31 +29,45 @@ pip install -r requirements.txt
 
 ### Running the Application
 
-**PyQt6 Version (Traditional Desktop):**
+**Default (Flet - Modern Cross-Platform):**
 ```bash
 source venv/bin/activate  # Activate virtual environment
 python main.py
+# Or run as web app: python main.py --web
 ```
 
-**Flet Version (Modern Cross-Platform):**
+**Legacy PyQt6 Version (To Be Deprecated):**
 ```bash
 source venv/bin/activate  # Activate virtual environment
-python main_flet.py
-# Or run as web app: python main_flet.py --web
+python main_pyqt.py
 ```
 
 The application will automatically:
 - Detect available cameras (RealSense → webcam → Continuity Camera)
 - Enable GPU acceleration (Apple Metal, CUDA, or CPU)
-- Download YOLOv11 model on first run (~6MB)
+- Download YOLOv11-medium model on first run (~50MB)
 
-> **Note**: Flet version offers a modern Material Design UI and can run in web browsers. See [flet_gui/README.md](flet_gui/README.md) for details.
+> **Note**: The default Flet version offers a modern Material Design UI and can run in web browsers. The PyQt version is maintained for compatibility but will be removed in a future release. See [flet_gui/README.md](flet_gui/README.md) for details.
 
 ### Controls
 
 - **Camera Selection**: Choose camera from dropdown menu
 - **Detection Mode**: Press 'T' to toggle between face tracking and object detection
 - **Robotic Arm**: Use GUI buttons for manual control (x±, y±, z±, grip)
+
+### Configuration
+
+You can customize the YOLO model size in `config/settings.py`:
+```python
+yolo_model_size: str = "m"  # Options: 'n' (nano, ~6MB), 's' (small, ~24MB), 
+                             #          'm' (medium, ~50MB, default), 
+                             #          'l' (large, ~65MB), 'x' (xlarge, ~140MB)
+```
+- **Nano (n)**: Fastest, good accuracy, real-time on mobile
+- **Small (s)**: Very fast, better accuracy
+- **Medium (m)**: Great accuracy, real-time on desktop (default)
+- **Large (l)**: Excellent accuracy
+- **XLarge (x)**: Best accuracy, slower
 
 ## System Requirements
 

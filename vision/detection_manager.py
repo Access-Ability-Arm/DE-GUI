@@ -36,8 +36,8 @@ class DetectionManager:
             if app_config.segmentation_model == "yolov11":
                 from vision.yolov11_seg import YOLOv11Seg
 
-                model = YOLOv11Seg(model_size="n")  # nano = fastest
-                print(f"✓ {app_config.segmentation_model} initialized")
+                model = YOLOv11Seg(model_size=app_config.yolo_model_size)
+                print(f"✓ YOLOv11-{app_config.yolo_model_size} initialized")
                 return model
             elif app_config.segmentation_model == "maskrcnn":
                 from vision.mask_rcnn import MaskRCNN
@@ -79,9 +79,8 @@ class DetectionManager:
         # Draw object masks
         image = self.segmentation_model.draw_object_mask(image)
 
-        # Show depth info if available
-        if depth_frame is not None:
-            self.segmentation_model.draw_object_info(image, depth_frame)
+        # Draw object info (labels, bounding boxes, depth if available)
+        image = self.segmentation_model.draw_object_info(image, depth_frame)
 
         return image
 
