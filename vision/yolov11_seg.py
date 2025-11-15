@@ -150,8 +150,12 @@ class YOLOv11Seg:
 
         # Confidence smoothing - store history per track ID
         self.confidence_history = {}  # {track_id: smoothed_confidence}
-        self.smoothing_alpha = 0.1  # Weight for new confidence (0.0 = ignore new, 1.0 = no smoothing)
-                                     # 0.1 = 10% new, 90% historical (effective window ~10-20 frames)
+        self.smoothing_alpha = 0.05  # Weight for new confidence (0.0 = ignore new, 1.0 = no smoothing)
+                                      # 0.05 = 5% new, 95% historical (effective window ~20-40 frames)
+
+        # Spatial smoothing - store previous positions per track ID
+        self.position_history = {}  # {track_id: (prev_x, prev_y)}
+        self.position_alpha = 0.2  # Weight for new position (higher than confidence for responsiveness)
 
     def detect_objects_mask(self, bgr_frame):
         """
@@ -243,14 +247,14 @@ class YOLOv11Seg:
                 )
                 mask_uint8 = (mask_resized * 255).astype(np.uint8)
 
-                # Apply morphological operations for better continuity
-                # Close small gaps and remove noise
-                kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+                # Apply morphological operations for better continuity and temporal stability
+                # Larger kernel (9x9) provides stronger smoothing and better temporal consistency
+                kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))
                 mask_uint8 = cv2.morphologyEx(mask_uint8, cv2.MORPH_CLOSE, kernel)
                 mask_uint8 = cv2.morphologyEx(mask_uint8, cv2.MORPH_OPEN, kernel)
 
-                # Apply Gaussian blur for smoother edges
-                mask_uint8 = cv2.GaussianBlur(mask_uint8, (5, 5), 0)
+                # Apply stronger Gaussian blur for smoother edges and reduced jitter
+                mask_uint8 = cv2.GaussianBlur(mask_uint8, (7, 7), 0)
 
                 # Re-threshold after blur
                 _, mask_uint8 = cv2.threshold(mask_uint8, 127, 255, cv2.THRESH_BINARY)
@@ -314,9 +318,24 @@ class YOLOv11Seg:
         Returns:
             bgr_frame: Image with info drawn
         """
-        for box, class_id, confidence, center, contours, mask in zip(
+        # Need to get track IDs again for spatial smoothing
+        # Re-run detection to get current track IDs (lightweight, just box access)
+        results = self.model.track(
+            bgr_frame,
+            conf=self.detection_threshold,
+            verbose=False,
+            device=self.device,
+            persist=True,
+            tracker="bytetrack.yaml",
+        )
+
+        track_ids = None
+        if len(results) > 0 and results[0].boxes.id is not None:
+            track_ids = results[0].boxes.id.cpu().numpy()
+
+        for idx, (box, class_id, confidence, center, contours, mask) in enumerate(zip(
             self.obj_boxes, self.obj_classes, self.obj_confidences, self.obj_centers, self.obj_contours, self.obj_masks
-        ):
+        )):
             x1, y1, x2, y2 = box
             cx, cy = center
 
@@ -365,8 +384,25 @@ class YOLOv11Seg:
             if len(mask_y) > 0:
                 # Find top center of actual mask pixels
                 # Use median X for stability, min Y for top placement
-                top_y = int(np.min(mask_y))
-                center_x = int(np.median(mask_x))
+                raw_top_y = int(np.min(mask_y))
+                raw_center_x = int(np.median(mask_x))
+
+                # Apply spatial smoothing for temporal stability (reduces label jitter)
+                track_id = int(track_ids[idx]) if track_ids is not None and idx < len(track_ids) else None
+
+                if track_id is not None and track_id in self.position_history:
+                    # Smooth position using exponential moving average
+                    prev_x, prev_y = self.position_history[track_id]
+                    center_x = int(self.position_alpha * raw_center_x + (1 - self.position_alpha) * prev_x)
+                    top_y = int(self.position_alpha * raw_top_y + (1 - self.position_alpha) * prev_y)
+                else:
+                    # First frame or no track ID, use raw position
+                    center_x = raw_center_x
+                    top_y = raw_top_y
+
+                # Update position history
+                if track_id is not None:
+                    self.position_history[track_id] = (center_x, top_y)
 
                 # Position label slightly below and centered on top of mask
                 label_x = center_x - label_width // 2
