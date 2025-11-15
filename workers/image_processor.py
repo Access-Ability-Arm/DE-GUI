@@ -20,7 +20,12 @@ class ImageProcessor(threading.Thread):
     Runs detection algorithms and provides processed frames via callback
     """
 
-    def __init__(self, display_width: int = 800, display_height: int = 650, callback: Optional[Callable] = None):
+    def __init__(
+        self,
+        display_width: int = 800,
+        display_height: int = 650,
+        callback: Optional[Callable] = None
+    ):
         """
         Initialize image processor
 
@@ -43,8 +48,8 @@ class ImageProcessor(threading.Thread):
         self.camera = None
         self.depth_frame = None
 
-        # Fixed reference point for depth measurement (when RealSense is available)
-        self.reference_point = (250, 100)  # (x, y) position for fixed depth reading
+        # Fixed reference point for depth measurement (when RealSense available)
+        self.reference_point = (250, 100)  # (x, y) for fixed depth reading
         self.show_reference_point = True
 
         self._initialize_camera()

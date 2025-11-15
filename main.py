@@ -14,7 +14,6 @@ Features:
 - Cross-platform (desktop, web, mobile)
 """
 
-import sys
 import warnings
 
 import flet as ft
@@ -22,8 +21,8 @@ import flet as ft
 # Suppress user warnings
 warnings.simplefilter("ignore", UserWarning)
 
-from config.console import header, info, status, underline
-from flet_gui.main_window import FletMainWindow
+from config.console import header, info, status, underline  # noqa: E402
+from flet_gui.main_window import FletMainWindow  # noqa: E402
 
 
 def main(page: ft.Page):
@@ -46,19 +45,37 @@ def main(page: ft.Page):
 if __name__ == "__main__":
     # Parse command-line arguments
     import argparse
-    parser = argparse.ArgumentParser(description="Access Ability Arm - Assistive Robotic Arm Control")
-    parser.add_argument("--web", action="store_true", help="Run as web application in browser")
-    parser.add_argument("--port", type=int, default=8550, help="Port for web server (default: 8550)")
+    parser = argparse.ArgumentParser(
+        description="Access Ability Arm - Assistive Robotic Arm Control"
+    )
+    parser.add_argument(
+        "--web", action="store_true",
+        help="Run as web application in browser"
+    )
+    parser.add_argument(
+        "--port", type=int, default=8550,
+        help="Port for web server (default: 8550)"
+    )
     args = parser.parse_args()
 
     # Run Flet app
     if args.web:
-        header(f"Starting Access Ability Arm ({underline('Web version')})")
+        header(
+            f"Starting Access Ability Arm ({underline('Web version')})"
+        )
         info(f"Open browser to: http://localhost:{args.port}")
         status("Press Ctrl+C to stop the server")
-        ft.app(target=main, view=ft.AppView.WEB_BROWSER, port=args.port, name="Access Ability Arm")
+        ft.app(
+            target=main, view=ft.AppView.WEB_BROWSER,
+            port=args.port, name="Access Ability Arm"
+        )
     else:
-        header(f"Starting Access Ability Arm ({underline('Desktop version')})")
-        info("Press 'T' to toggle between face tracking and object detection")
+        header(
+            f"Starting Access Ability Arm ({underline('Desktop version')})"
+        )
+        info(
+            "Press 'T' to toggle between face tracking "
+            "and object detection"
+        )
         status("Close the window to exit")
         ft.app(target=main, name="Access Ability Arm")

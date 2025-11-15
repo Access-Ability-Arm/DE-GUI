@@ -95,20 +95,24 @@ class MainWindow(QtWidgets.QMainWindow):
         print("\n" + "=" * 40)
         print("SYSTEM STATUS")
         print("=" * 40)
-        print(
-            f"RealSense:         {'✓ Available' if self.image_processor.use_realsense else '✗ Not available'}"
+        rs_status = (
+            '✓ Available' if self.image_processor.use_realsense
+            else '✗ Not available'
         )
+        print(f"RealSense:         {rs_status}")
 
         seg_model = (
             app_config.segmentation_model.upper()
             if app_config.segmentation_model
             else "None"
         )
-        print(
-            f"Segmentation:      {seg_model if self.image_processor.has_object_detection else '✗ Not available'}"
+        seg_status = (
+            seg_model if self.image_processor.has_object_detection
+            else '✗ Not available'
         )
+        print(f"Segmentation:      {seg_status}")
         print(f"Detection Mode:    {self.image_processor.detection_mode}")
-        print(f"Toggle Key:        Press 'T' to switch modes")
+        print("Toggle Key:        Press 'T' to switch modes")
         print("=" * 40 + "\n")
 
     def _on_camera_changed(self, selection_index: int):

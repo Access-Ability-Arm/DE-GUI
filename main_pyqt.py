@@ -23,7 +23,7 @@ warnings.simplefilter("ignore", UserWarning)
 sys.coinit_flags = 2
 
 # Import main window after PyQt setup
-from gui.main_window import MainWindow
+from gui.main_window import MainWindow  # noqa: E402
 
 
 def main():

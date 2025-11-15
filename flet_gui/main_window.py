@@ -10,7 +10,6 @@ from io import BytesIO
 
 import cv2
 import flet as ft
-import numpy as np
 from PIL import Image
 
 from config.settings import app_config
@@ -67,7 +66,10 @@ class FletMainWindow:
         """Build the Flet UI layout"""
         # Video feed display - create placeholder
         # Create a minimal 1x1 transparent PNG as base64 placeholder
-        placeholder_base64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+        placeholder_base64 = (
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42m"
+            "Nk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+        )
 
         self.video_feed = ft.Image(
             src_base64=placeholder_base64,
@@ -353,7 +355,8 @@ class FletMainWindow:
 
     def _on_keyboard_event(self, e: ft.KeyboardEvent):
         """Handle keyboard shortcuts"""
-        if e.key == "T" and e.shift == False and e.ctrl == False and e.alt == False:
+        if (e.key == "T" and e.shift is False and
+                e.ctrl is False and e.alt is False):
             self._toggle_detection_mode()
 
     def cleanup(self):

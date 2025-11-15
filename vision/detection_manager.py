@@ -10,7 +10,7 @@ from typing import Optional
 
 import numpy as np
 
-from config.console import error, status, success
+from config.console import status
 from config.settings import app_config
 from vision.face_detector import FaceDetector
 
@@ -47,12 +47,12 @@ class DetectionManager:
         status("Detection manager initialized")
 
         # Always initialize face detector (MediaPipe is always available)
-        # Suppress TensorFlow Lite feedback manager warnings during initialization
-        # Warnings appear during the first .process() call, so we make a dummy call
+        # Suppress TensorFlow Lite feedback manager warnings
+        # Warnings appear during the first .process() call
         with suppress_output():
             self.face_detector = FaceDetector()
-            # Make a dummy process call to trigger TFLite initialization warnings
-            # This ensures warnings are suppressed rather than appearing later
+            # Make a dummy process call to trigger TFLite warnings
+            # This ensures warnings are suppressed
             import numpy as np
             dummy_image = np.zeros((10, 10, 3), dtype=np.uint8)
             self.face_detector.mesh.process(dummy_image)
@@ -111,7 +111,8 @@ class DetectionManager:
     ) -> np.ndarray:
         """Process frame with object detection"""
         # Get object masks
-        boxes, classes, contours, centers = self.segmentation_model.detect_objects_mask(
+        (boxes, classes,
+         contours, centers) = self.segmentation_model.detect_objects_mask(
             image
         )
 
@@ -132,7 +133,8 @@ class DetectionManager:
     ) -> np.ndarray:
         """Process frame with both object detection and face tracking"""
         # First, run object detection (includes person segmentation)
-        boxes, classes, contours, centers = self.segmentation_model.detect_objects_mask(
+        (boxes, classes,
+         contours, centers) = self.segmentation_model.detect_objects_mask(
             image
         )
 
@@ -160,7 +162,10 @@ class DetectionManager:
                 self.detection_mode = "face"
                 print("✓ Switched to face tracking mode")
         else:
-            print("✗ Object detection not available - No segmentation model loaded")
+            print(
+                "✗ Object detection not available - "
+                "No segmentation model loaded"
+            )
 
     @property
     def has_object_detection(self) -> bool:

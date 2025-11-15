@@ -98,7 +98,7 @@ def underline(text):
 
 
 # Auto-disable colors if not in a TTY
-import sys
+import sys  # noqa: E402
 
 if not sys.stdout.isatty():
     Colors.disable()

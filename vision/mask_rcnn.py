@@ -26,7 +26,7 @@ class MaskRCNN:
                 self.net.setPreferableTarget(cv2.dnn.DNN_TARGET_CUDA)
                 info("Mask R-CNN: Using CUDA backend")
                 backend_set = True
-            except:
+            except Exception:
                 pass
 
         # Try Vulkan (works on macOS via MoltenVK if available)
@@ -36,14 +36,17 @@ class MaskRCNN:
                 self.net.setPreferableTarget(cv2.dnn.DNN_TARGET_VULKAN)
                 info("Mask R-CNN: Using Vulkan backend (Metal via MoltenVK)")
                 backend_set = True
-            except:
+            except Exception:
                 pass
 
         # Fallback to CPU (most reliable, works everywhere)
         if not backend_set:
             self.net.setPreferableBackend(cv2.dnn.DNN_BACKEND_OPENCV)
             self.net.setPreferableTarget(cv2.dnn.DNN_TARGET_CPU)
-            info("Mask R-CNN: Using CPU backend (no GPU acceleration available)")
+            info(
+                "Mask R-CNN: Using CPU backend "
+                "(no GPU acceleration available)"
+            )
 
         # Generate random colors
         np.random.seed(2)
@@ -71,7 +74,9 @@ class MaskRCNN:
         blob = cv2.dnn.blobFromImage(bgr_frame, swapRB=True)
         self.net.setInput(blob)
 
-        boxes, masks = self.net.forward(["detection_out_final", "detection_masks"])
+        boxes, masks = self.net.forward(
+            ["detection_out_final", "detection_masks"]
+        )
 
         # Detect objects
         frame_height, frame_width, _ = bgr_frame.shape
@@ -87,7 +92,6 @@ class MaskRCNN:
             box = boxes[0, 0, i]
             class_id = box[1]
             score = box[2]
-            color = self.colors[int(class_id)]
             if score < self.detection_threshold:
                 continue
 
@@ -111,9 +115,13 @@ class MaskRCNN:
             mask = masks[i, int(class_id)]
             roi_height, roi_width = y2 - y, x2 - x
             mask = cv2.resize(mask, (roi_width, roi_height))
-            _, mask = cv2.threshold(mask, self.mask_threshold, 255, cv2.THRESH_BINARY)
+            _, mask = cv2.threshold(
+                mask, self.mask_threshold, 255, cv2.THRESH_BINARY
+            )
             contours, _ = cv2.findContours(
-                np.array(mask, np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+                np.array(mask, np.uint8),
+                cv2.RETR_EXTERNAL,
+                cv2.CHAIN_APPROX_SIMPLE
             )
             self.obj_contours.append(contours)
 
@@ -132,13 +140,9 @@ class MaskRCNN:
             roi_copy = np.zeros_like(roi)
 
             for cnt in contours:
-                # cv2.f(roi, [cnt], (int(color[0]), int(color[1]), int(color[2])))
-                cv2.drawContours(
-                    roi, [cnt], -1, (int(color[0]), int(color[1]), int(color[2])), 3
-                )
-                cv2.fillPoly(
-                    roi_copy, [cnt], (int(color[0]), int(color[1]), int(color[2]))
-                )
+                color_tuple = (int(color[0]), int(color[1]), int(color[2]))
+                cv2.drawContours(roi, [cnt], -1, color_tuple, 3)
+                cv2.fillPoly(roi_copy, [cnt], color_tuple)
                 roi = cv2.addWeighted(roi, 1, roi_copy, 0.5, 0.0)
                 bgr_frame[y:y2, x:x2] = roi
         return bgr_frame

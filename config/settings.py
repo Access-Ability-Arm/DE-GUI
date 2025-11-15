@@ -21,13 +21,16 @@ class AppConfig:
     segmentation_model: Optional[str] = None  # 'yolov11' or 'maskrcnn'
 
     # YOLOv11 model configuration
-    yolo_model_size: str = "x"  # 'n' (nano), 's' (small), 'm' (medium), 'l' (large), 'x' (xlarge)
-    # XLarge (x) provides best accuracy for critical assistive robotics applications
-    # Better at detecting small objects (cups) and reducing false positives
-    # Model sizes: nano (~6MB), small (~22MB), medium (~50MB), large (~100MB), xlarge (~200MB)
+    # 'n' (nano), 's' (small), 'm' (medium), 'l' (large), 'x' (xlarge)
+    yolo_model_size: str = "x"
+    # XLarge (x) provides best accuracy for assistive robotics
+    # Better at detecting small objects and reducing false positives
+    # Sizes: nano (~6MB), small (~22MB), medium (~50MB),
+    # large (~100MB), xlarge (~200MB)
 
     # Detection settings
-    detection_threshold: float = 0.5  # Balance between detecting small objects and avoiding false positives
+    # Balance between detecting small objects and avoiding false positives
+    detection_threshold: float = 0.5
 
     # Button behavior
     button_hold_threshold: float = 0.5  # seconds
@@ -51,24 +54,29 @@ def detect_hardware_capabilities() -> AppConfig:
 
     # Try to detect RealSense camera support
     try:
-        from hardware.realsense_camera import RealsenseCamera
+        from hardware.realsense_camera import RealsenseCamera  # noqa: F401
 
         config.realsense_available = True
         success(f"{underline('RealSense camera')} support available")
     except ImportError:
-        error("RealSense camera not available - using standard webcam only")
+        error(
+            "RealSense camera not available - using standard webcam only"
+        )
 
     # Try YOLOv11-seg first (preferred), fallback to Mask R-CNN
     try:
-        from vision.yolov11_seg import YOLOv11Seg
+        from vision.yolov11_seg import YOLOv11Seg  # noqa: F401
 
         config.segmentation_available = True
         config.segmentation_model = "yolov11"
-        success(f"{underline('YOLOv11-seg')} object detection available (recommended)")
+        success(
+            f"{underline('YOLOv11-seg')} object detection available "
+            "(recommended)"
+        )
     except ImportError as e:
         error(f"YOLOv11-seg not available: {e}")
         try:
-            from vision.mask_rcnn import MaskRCNN
+            from vision.mask_rcnn import MaskRCNN  # noqa: F401
 
             config.segmentation_available = True
             config.segmentation_model = "maskrcnn"

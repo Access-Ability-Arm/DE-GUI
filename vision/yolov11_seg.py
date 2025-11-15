@@ -12,9 +12,12 @@ import cv2
 import numpy as np
 
 # Suppress TensorFlow Lite warnings at the C++ level
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Suppress TF logs (INFO, WARNING, ERROR)
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Suppress TF logs
 os.environ['GLOG_minloglevel'] = '3'  # Suppress GLOG (Google Logging)
-warnings.filterwarnings('ignore', category=UserWarning, module='google.protobuf')
+warnings.filterwarnings(
+    'ignore', category=UserWarning, module='google.protobuf'
+)
+
 
 @contextmanager
 def suppress_stderr():
@@ -26,9 +29,10 @@ def suppress_stderr():
     finally:
         sys.stderr = stderr
 
-from ultralytics import YOLO
 
-from config.console import info, status, underline
+from ultralytics import YOLO  # noqa: E402
+
+from config.console import info, status, underline  # noqa: E402
 
 
 class YOLOv11Seg:
@@ -37,8 +41,9 @@ class YOLOv11Seg:
         Initialize YOLOv11 segmentation model
 
         Args:
-            model_size: Model size - 'n' (nano), 's' (small), 'm' (medium), 'l' (large), 'x' (xlarge)
-                       Nano is fastest, XLarge is most accurate
+            model_size: Model size - 'n' (nano), 's' (small), 'm' (medium),
+                        'l' (large), 'x' (xlarge)
+                        Nano is fastest, XLarge is most accurate
         """
         status(f"Loading YOLOv11-{model_size}-seg model...")
 
@@ -47,16 +52,24 @@ class YOLOv11Seg:
 
         if torch.backends.mps.is_available():
             self.device = "mps"
-            info(f"YOLOv11: Using {underline('Apple Metal (MPS)')} for GPU acceleration")
+            info(
+                f"YOLOv11: Using {underline('Apple Metal (MPS)')} "
+                "for GPU acceleration"
+            )
         elif torch.cuda.is_available():
             self.device = "cuda"
-            info(f"YOLOv11: Using {underline('NVIDIA CUDA')} for GPU acceleration")
+            info(
+                f"YOLOv11: Using {underline('NVIDIA CUDA')} "
+                "for GPU acceleration"
+            )
         else:
             self.device = "cpu"
             info("YOLOv11: Using CPU (no GPU acceleration available)")
 
         # Load YOLOv11 segmentation model from models/ directory
-        models_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "models")
+        models_dir = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), "models"
+        )
         local_model = os.path.join(models_dir, f"yolo11{model_size}-seg.pt")
 
         # Suppress verbose output and C++ warnings during model loading
@@ -74,7 +87,8 @@ class YOLOv11Seg:
                 self.model = YOLO(model_name, verbose=False)
 
                 # Move downloaded model to models/ directory for future use
-                if os.path.exists(model_name) and not os.path.exists(local_model):
+                if (os.path.exists(model_name) and
+                        not os.path.exists(local_model)):
                     import shutil
                     shutil.move(model_name, local_model)
                     status(f"Moved {model_name} to models/ directory")
@@ -184,12 +198,14 @@ class YOLOv11Seg:
 
         # Confidence smoothing - store history per track ID
         self.confidence_history = {}  # {track_id: smoothed_confidence}
-        self.smoothing_alpha = 0.05  # Weight for new confidence (0.0 = ignore new, 1.0 = no smoothing)
-                                      # 0.05 = 5% new, 95% historical (effective window ~20-40 frames)
+        # Weight for new confidence (0.0 = ignore new, 1.0 = no smoothing)
+        # 0.05 = 5% new, 95% historical (effective window ~20-40 frames)
+        self.smoothing_alpha = 0.05
 
         # Spatial smoothing - store previous positions per track ID
         self.position_history = {}  # {track_id: (prev_x, prev_y)}
-        self.position_alpha = 0.2  # Weight for new position (higher than confidence for responsiveness)
+        # Weight for new position (higher than confidence)
+        self.position_alpha = 0.2
 
     def detect_objects_mask(self, bgr_frame):
         """
@@ -209,9 +225,9 @@ class YOLOv11Seg:
         # YOLO requires dimensions divisible by 32 (stride requirement)
         #
         # imgsz recommendations (Ultralytics official):
-        # - 640: Default, optimal for real-time webcam segmentation (recommended)
+        # - 640: Default, optimal for real-time (recommended)
         # - 1280: 2x size, better coverage but slower (~4x more pixels)
-        # - 1920: Full HD, best coverage but very slow, may cause detection issues
+        # - 1920: Full HD, best coverage but very slow
         #
         # References:
         # - https://docs.ultralytics.com/tasks/segment/
@@ -219,12 +235,12 @@ class YOLOv11Seg:
         results = self.model.track(
             bgr_frame,
             conf=self.detection_threshold,
-            iou=0.5,  # IoU threshold for NMS - higher values merge overlapping detections
+            iou=0.5,  # IoU threshold for NMS
             verbose=False,
             device=self.device,
             persist=True,  # Persist tracks between frames
-            tracker="bytetrack.yaml",  # Use ByteTrack for smooth tracking
-            imgsz=640,  # Ultralytics recommended default for real-time segmentation
+            tracker="bytetrack.yaml",  # Use ByteTrack
+            imgsz=640,  # Ultralytics recommended default
         )
 
         # Clear previous results
@@ -261,8 +277,11 @@ class YOLOv11Seg:
                     # Use exponential moving average for smoothing
                     if track_id in self.confidence_history:
                         # Smooth: new = alpha * current + (1-alpha) * previous
-                        confidence = (self.smoothing_alpha * raw_confidence +
-                                    (1 - self.smoothing_alpha) * self.confidence_history[track_id])
+                        prev_conf = self.confidence_history[track_id]
+                        confidence = (
+                            self.smoothing_alpha * raw_confidence +
+                            (1 - self.smoothing_alpha) * prev_conf
+                        )
                     else:
                         # First time seeing this track, use raw confidence
                         confidence = raw_confidence
@@ -293,17 +312,23 @@ class YOLOv11Seg:
                 )
                 mask_uint8 = (mask_resized * 255).astype(np.uint8)
 
-                # Apply morphological operations for better continuity and temporal stability
-                # Larger kernel (9x9) provides stronger smoothing and better temporal consistency
+                # Apply morphological operations for better continuity
+                # Larger kernel (9x9) provides stronger smoothing
                 kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))
-                mask_uint8 = cv2.morphologyEx(mask_uint8, cv2.MORPH_CLOSE, kernel)
-                mask_uint8 = cv2.morphologyEx(mask_uint8, cv2.MORPH_OPEN, kernel)
+                mask_uint8 = cv2.morphologyEx(
+                    mask_uint8, cv2.MORPH_CLOSE, kernel
+                )
+                mask_uint8 = cv2.morphologyEx(
+                    mask_uint8, cv2.MORPH_OPEN, kernel
+                )
 
-                # Apply stronger Gaussian blur for smoother edges and reduced jitter
+                # Apply Gaussian blur for smoother edges and reduced jitter
                 mask_uint8 = cv2.GaussianBlur(mask_uint8, (7, 7), 0)
 
                 # Re-threshold after blur
-                _, mask_uint8 = cv2.threshold(mask_uint8, 127, 255, cv2.THRESH_BINARY)
+                _, mask_uint8 = cv2.threshold(
+                    mask_uint8, 127, 255, cv2.THRESH_BINARY
+                )
 
                 # Find contours
                 contours, _ = cv2.findContours(
@@ -312,7 +337,9 @@ class YOLOv11Seg:
 
                 # Keep only contours with significant area (filter noise)
                 min_area = 100  # Minimum 100 pixels
-                contours = [cnt for cnt in contours if cv2.contourArea(cnt) > min_area]
+                contours = [
+                    cnt for cnt in contours if cv2.contourArea(cnt) > min_area
+                ]
 
                 self.obj_contours.append(contours)
 
@@ -381,9 +408,12 @@ class YOLOv11Seg:
         if len(results) > 0 and results[0].boxes.id is not None:
             track_ids = results[0].boxes.id.cpu().numpy()
 
-        for idx, (box, class_id, confidence, center, contours, mask) in enumerate(zip(
-            self.obj_boxes, self.obj_classes, self.obj_confidences, self.obj_centers, self.obj_contours, self.obj_masks
-        )):
+        for idx, (box, class_id, confidence, center, contours, mask) in (
+            enumerate(zip(
+                self.obj_boxes, self.obj_classes, self.obj_confidences,
+                self.obj_centers, self.obj_contours, self.obj_masks
+            ))
+        ):
             x1, y1, x2, y2 = box
             cx, cy = center
 
@@ -435,14 +465,25 @@ class YOLOv11Seg:
                 raw_top_y = int(np.min(mask_y))
                 raw_center_x = int(np.median(mask_x))
 
-                # Apply spatial smoothing for temporal stability (reduces label jitter)
-                track_id = int(track_ids[idx]) if track_ids is not None and idx < len(track_ids) else None
+                # Apply spatial smoothing (reduces label jitter)
+                track_id = (
+                    int(track_ids[idx])
+                    if track_ids is not None and idx < len(track_ids)
+                    else None
+                )
 
-                if track_id is not None and track_id in self.position_history:
+                if (track_id is not None and
+                        track_id in self.position_history):
                     # Smooth position using exponential moving average
                     prev_x, prev_y = self.position_history[track_id]
-                    center_x = int(self.position_alpha * raw_center_x + (1 - self.position_alpha) * prev_x)
-                    top_y = int(self.position_alpha * raw_top_y + (1 - self.position_alpha) * prev_y)
+                    center_x = int(
+                        self.position_alpha * raw_center_x +
+                        (1 - self.position_alpha) * prev_x
+                    )
+                    top_y = int(
+                        self.position_alpha * raw_top_y +
+                        (1 - self.position_alpha) * prev_y
+                    )
                 else:
                     # First frame or no track ID, use raw position
                     center_x = raw_center_x
@@ -489,16 +530,19 @@ class YOLOv11Seg:
                 try:
                     depth_mm = depth_frame[cy, cx]
                     depth_text = f"{depth_mm / 10:.1f} cm"
+                    text_y = (
+                        label_y + text_height + depth_height + padding * 2
+                    )
                     cv2.putText(
                         bgr_frame,
                         depth_text,
-                        (label_x + padding, label_y + text_height + depth_height + padding * 2),
+                        (label_x + padding, text_y),
                         font,
                         0.7,
                         (255, 255, 255),
                         font_thickness,
                     )
-                except:
+                except Exception:
                     pass
 
         return bgr_frame

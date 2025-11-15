@@ -17,8 +17,8 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 os.environ['GLOG_minloglevel'] = '3'
 os.environ['GLOG_logtostderr'] = '0'
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
-# Suppress ABSL warnings (includes feedback manager warnings from inference_feedback_manager.cc)
-os.environ['ABSL_MINLOGLEVEL'] = '2'  # 0=INFO, 1=WARNING, 2=ERROR - suppress INFO and WARNING
+# Suppress ABSL warnings (includes feedback manager warnings)
+os.environ['ABSL_MINLOGLEVEL'] = '2'  # 0=INFO, 1=WARNING, 2=ERROR
 
 
 @contextmanager
@@ -45,15 +45,17 @@ def suppress_output():
             os.close(devnull)
 
 
-# MediaPipe import is fine - warnings come from first .process() call, not import
-import mediapipe as mp
+# MediaPipe import is fine - warnings come from first .process() call
+import mediapipe as mp  # noqa: E402
 
 
 class FaceDetector:
     """Detects and tracks facial landmarks using MediaPipe"""
 
     # Facial landmark indices from MediaPipe face mesh
-    # Reference: https://raw.githubusercontent.com/google/mediapipe/a908d668c730da128dfa8d9f6bd25d519d006692/mediapipe/modules/face_geometry/data/canonical_face_model_uv_visualization.png
+    # Reference: https://raw.githubusercontent.com/google/mediapipe/
+    # a908d668c730da128dfa8d9f6bd25d519d006692/mediapipe/modules/
+    # face_geometry/data/canonical_face_model_uv_visualization.png
 
     # Mouth landmarks
     MOUTH_POINTS = [
@@ -98,8 +100,8 @@ class FaceDetector:
 
     def __init__(self):
         """Initialize MediaPipe face mesh"""
-        # Suppress TensorFlow Lite feedback manager warnings during initialization
-        # Warnings can occur when accessing mp.solutions.face_mesh or creating FaceMesh()
+        # Suppress TensorFlow Lite feedback manager warnings
+        # Warnings can occur when accessing mp.solutions.face_mesh
         with suppress_output():
             self.mp_mesh = mp.solutions.face_mesh
             self.mesh = self.mp_mesh.FaceMesh()
@@ -140,7 +142,9 @@ class FaceDetector:
                             # Draw center of mouth (yellow)
                             tx = int(tx / 2)
                             ty = int(ty / 2)
-                            cv2.circle(image, (tx, ty), 10, (0, 255, 255), cv2.FILLED)
+                            cv2.circle(
+                                image, (tx, ty), 10, (0, 255, 255), cv2.FILLED
+                            )
 
                         # Draw individual mouth points
                         cv2.circle(image, (px, py), 4, (0, 255, 0), cv2.FILLED)

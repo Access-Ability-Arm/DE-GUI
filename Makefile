@@ -147,3 +147,7 @@ info:
 	@echo "  ✓ Apple Metal GPU acceleration (macOS)"
 	@echo ""
 	@echo "Run 'make help' for available commands"
+
+# Run flutter doctor
+flutter-doctor:
+	@flutter doctor -v

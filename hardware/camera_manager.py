@@ -43,6 +43,7 @@ def suppress_output():
             os.dup2(stderr_copy.fileno(), stderr_fd)
             os.close(devnull)
 
+
 if platform.system() == "Windows":
     import winsdk.windows.devices.enumeration as windows_devices
 
@@ -165,9 +166,9 @@ class CameraManager:
                 cap = cv2.VideoCapture(camera_index)
                 if cap.isOpened():
                     # Try to get camera name from backend
-                    # CAP_PROP_BACKEND_NAME is available in newer OpenCV versions
+                    # CAP_PROP_BACKEND_NAME available in newer OpenCV versions
                     if hasattr(cv2, 'CAP_PROP_BACKEND_NAME'):
-                        backend_name = cap.get(cv2.CAP_PROP_BACKEND_NAME)
+                        backend_name = cap.get(cv2.CAP_PROP_BACKEND_NAME)  # noqa: F841
 
                     # For macOS, try to infer from common patterns
                     # OpenCV doesn't expose camera names directly, so we use heuristics
@@ -192,4 +193,6 @@ class CameraManager:
 
     async def _get_camera_information_for_windows(self):
         """Get detailed camera information on Windows platform"""
-        return await windows_devices.DeviceInformation.find_all_async(VIDEO_DEVICES)
+        return await windows_devices.DeviceInformation.find_all_async(
+            VIDEO_DEVICES
+        )
