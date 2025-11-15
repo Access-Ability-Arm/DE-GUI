@@ -92,10 +92,17 @@ class ImageProcessor(threading.Thread):
             ret, frame, depth_frame = self._capture_frame()
 
             if ret and frame is not None:
+                # Flip image horizontally for mirror effect FIRST
+                frame = cv2.flip(frame, 1)
+
+                # Also flip depth frame if available
+                if depth_frame is not None:
+                    depth_frame = cv2.flip(depth_frame, 1)
+
                 # Convert to RGB
                 image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-                # Process with detection
+                # Process with detection (labels will now be correct orientation)
                 processed_image = self.detection_manager.process_frame(
                     image_rgb, depth_frame
                 )
@@ -105,9 +112,6 @@ class ImageProcessor(threading.Thread):
                     processed_image = self._draw_reference_point(
                         processed_image, depth_frame
                     )
-
-                # Flip image horizontally for mirror effect
-                processed_image = cv2.flip(processed_image, 1)
 
                 # Call callback if provided
                 if self.callback:
