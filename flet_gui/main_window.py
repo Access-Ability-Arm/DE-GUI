@@ -36,7 +36,7 @@ class FletMainWindow:
         self.page.theme_mode = ft.ThemeMode.LIGHT
         self.page.padding = 10
         self.page.window.width = 1200
-        self.page.window.height = 750
+        self.page.window.height = 820
         self.page.window.resizable = True
 
         # Initialize components
