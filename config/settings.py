@@ -19,12 +19,13 @@ class AppConfig:
     segmentation_model: Optional[str] = None  # 'yolov11' or 'maskrcnn'
 
     # YOLOv11 model configuration
-    yolo_model_size: str = "l"  # 'n' (nano), 's' (small), 'm' (medium), 'l' (large), 'x' (xlarge)
-    # Large (l) provides superior accuracy for critical assistive robotics applications
+    yolo_model_size: str = "x"  # 'n' (nano), 's' (small), 'm' (medium), 'l' (large), 'x' (xlarge)
+    # XLarge (x) provides best accuracy for critical assistive robotics applications
+    # Better at detecting small objects (cups) and reducing false positives
     # Model sizes: nano (~6MB), small (~22MB), medium (~50MB), large (~100MB), xlarge (~200MB)
 
     # Detection settings
-    detection_threshold: float = 0.6  # Higher threshold reduces false positives
+    detection_threshold: float = 0.5  # Balance between detecting small objects and avoiding false positives
 
     # Button behavior
     button_hold_threshold: float = 0.5  # seconds
