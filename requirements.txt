@@ -1,5 +1,6 @@
-# GUI Framework
+# GUI Frameworks
 PyQt6>=6.6.0
+flet>=0.24.0  # Modern cross-platform UI framework
 
 # Computer Vision
 opencv-python>=4.8.0

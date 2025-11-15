@@ -1,4 +1,4 @@
-# DE-GUI
+# Access Ability Arm
 
 AI-powered GUI for the Drane Engineering assistive robotic arm, featuring real-time object detection, face tracking, and depth sensing.
 
@@ -29,15 +29,25 @@ pip install -r requirements.txt
 
 ### Running the Application
 
+**PyQt6 Version (Traditional Desktop):**
 ```bash
 source venv/bin/activate  # Activate virtual environment
 python main.py
+```
+
+**Flet Version (Modern Cross-Platform):**
+```bash
+source venv/bin/activate  # Activate virtual environment
+python main_flet.py
+# Or run as web app: python main_flet.py --web
 ```
 
 The application will automatically:
 - Detect available cameras (RealSense → webcam → Continuity Camera)
 - Enable GPU acceleration (Apple Metal, CUDA, or CPU)
 - Download YOLOv11 model on first run (~6MB)
+
+> **Note**: Flet version offers a modern Material Design UI and can run in web browsers. See [flet_gui/README.md](flet_gui/README.md) for details.
 
 ### Controls
 
@@ -65,6 +75,20 @@ The application will automatically:
 - Center point calculation and visualization
 - Works with any standard webcam
 
+## GUI Options
+
+Two GUI implementations are available:
+
+| Feature | PyQt6 | Flet |
+|---------|-------|------|
+| **Interface** | Traditional desktop | Modern Material Design |
+| **Platforms** | Desktop only | Desktop + Web + Mobile* |
+| **Entry Point** | `main.py` | `main_flet.py` |
+| **UI Definition** | Qt Designer (.ui file) | Python code |
+| **Web Support** | ✗ | ✓ |
+
+*Mobile support planned for future releases
+
 ## Architecture
 
 The application uses a modular architecture for maintainability:
@@ -73,10 +97,12 @@ The application uses a modular architecture for maintainability:
 access-ability-arm/
 ├── config/       # Configuration & feature detection
 ├── gui/          # PyQt6 main window & UI
+├── flet_gui/     # Flet alternative GUI
 ├── hardware/     # Camera & button controllers
 ├── vision/       # Computer vision (YOLO, face detection)
 ├── workers/      # Image processing thread
-└── main.py       # Application entry point
+├── main.py       # PyQt6 entry point
+└── main_flet.py  # Flet entry point
 ```
 
 See [docs/refactoring.md](docs/refactoring.md) for architecture details.
