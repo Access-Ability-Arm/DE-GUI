@@ -5,9 +5,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 
 DE-GUI is a PyQt6-based GUI application for the Drane Engineering assistive robotic arm. It integrates:
-- Intel RealSense camera for depth sensing
-- Mask R-CNN for object detection and segmentation
+- Intel RealSense camera for depth sensing (optional)
+- **YOLOv11/v12-seg** for real-time object detection and segmentation (recommended)
+- Mask R-CNN for object detection (legacy, slower)
 - MediaPipe for face landmark tracking
+- Apple Metal GPU acceleration on M-series Macs
 - Manual robotic arm controls (x, y, z, grip)
 
 The application allows users to identify objects in the camera feed and enables the robot to differentiate and pick up those items, with both automated (computer vision) and manual control modes.
@@ -59,14 +61,17 @@ python measure_object_distance.py
 
 **main.py (Flexible Camera Support - RECOMMENDED):**
 - **Camera**: Auto-detects RealSense OR standard webcam (MacBook FaceTime, USB webcam, Continuity Camera)
-- **Required**: MediaPipe library (auto-installed via requirements.txt)
+- **Required**: MediaPipe, Ultralytics (auto-installed via requirements.txt)
 - **Optional**: pyrealsense2 (enables depth sensing with RealSense camera)
-- **Optional**: Mask R-CNN models in `dnn/` directory (enables object detection)
+- **Object Detection**: YOLOv11/v12-seg (auto-downloads ~6MB model on first run)
+  - **GPU Acceleration**: Automatically uses Apple Metal (MPS) on M-series Macs, CUDA on NVIDIA, or CPU
+  - Much faster and more accurate than legacy Mask R-CNN
+  - Falls back to Mask R-CNN if YOLOv12-seg unavailable
 - **Modes**: Automatically selects best mode based on available hardware:
-  - RealSense + Mask R-CNN → Object detection with depth
-  - Webcam + Mask R-CNN → Object detection without depth
+  - RealSense + YOLO → Object detection with depth (fastest)
+  - Webcam + YOLO → Object detection without depth
   - Webcam only → Face tracking
-- **Toggle**: Press 'T' to switch between face tracking and object detection (if Mask R-CNN available)
+- **Toggle**: Press 'T' to switch between face tracking and object detection
 - Works on macOS, Windows, Linux
 
 **main-rd.py (RealSense Only - LEGACY):**
@@ -135,16 +140,30 @@ Both share the same core PyQt6 GUI structure loaded from `draftGUI.ui`.
 - Applies spatial filtering and hole-filling to depth data
 - `get_frame_stream()` returns: (success, color_image, depth_image)
 
-**mask_rcnn.py - MaskRCNN class**
+**yolov12_seg.py - YOLOv12Seg class (RECOMMENDED)**
+- Modern real-time instance segmentation using Ultralytics YOLOv11/v12
+- Auto-downloads model weights (~6MB for nano model) on first run
+- **GPU Acceleration**: Automatically detects and uses:
+  - Apple Metal (MPS) on M-series Macs
+  - NVIDIA CUDA on Windows/Linux
+  - CPU fallback for compatibility
+- Detection threshold: 0.5 (balanced precision/recall)
+- 80 COCO classes (person, car, cup, etc.)
+- Model sizes: nano (fastest), small, medium, large, xlarge (most accurate)
+- Compatible interface with mask_rcnn.py for easy replacement
+- `detect_objects_mask()`: Returns boxes, classes, contours, centers
+- `draw_object_mask()`: Draws colored segmentation masks on frame
+- `draw_object_info()`: Overlays class names, depth measurements, crosshairs
+
+**mask_rcnn.py - MaskRCNN class (LEGACY)**
 - Loads TensorFlow Mask R-CNN model from `dnn/` directory:
   - `frozen_inference_graph_coco.pb` - Pre-trained model weights (~200MB)
   - `mask_rcnn_inception_v2_coco_2018_01_28.pbtxt` - Model configuration
   - `classes.txt` - COCO dataset class labels (80 classes)
 - Detection threshold: 0.7, Mask threshold: 0.3
-- Uses CUDA backend if available
-- `detect_objects_mask()`: Returns boxes, classes, contours, centers
-- `draw_object_mask()`: Draws colored segmentation masks on frame
-- `draw_object_info()`: Overlays class names, depth measurements, crosshairs
+- Backend: Skips CUDA on macOS, tries Vulkan, falls back to CPU
+- Slower than YOLOv12, kept for compatibility
+- Same interface as YOLOv12Seg for drop-in replacement
 
 ### Downloading DNN Model Files
 

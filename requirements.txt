@@ -5,6 +5,9 @@ PyQt6>=6.6.0
 opencv-python>=4.8.0
 mediapipe>=0.10.0
 
+# Object Detection & Segmentation
+ultralytics>=8.3.0  # YOLOv12-seg (recommended for real-time object detection)
+
 # Numerical Computing
 numpy>=1.24.0
 

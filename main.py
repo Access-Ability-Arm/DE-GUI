@@ -18,9 +18,10 @@ if platform.system() == "Windows":
 
 import mediapipe as mp
 
-# Try to import RealSense and Mask R-CNN (optional)
+# Try to import RealSense and segmentation models (optional)
 REALSENSE_AVAILABLE = False
-MASK_RCNN_AVAILABLE = False
+SEGMENTATION_AVAILABLE = False
+SEGMENTATION_MODEL = None
 
 try:
     from realsense_camera import RealsenseCamera
@@ -30,13 +31,23 @@ try:
 except ImportError:
     print("RealSense camera not available - using standard webcam only")
 
+# Try YOLOv12-seg first (preferred), fallback to Mask R-CNN
 try:
-    from mask_rcnn import MaskRCNN
+    from yolov12_seg import YOLOv12Seg
 
-    MASK_RCNN_AVAILABLE = True
-    print("Mask R-CNN object detection available")
-except ImportError:
-    print("Mask R-CNN not available - face tracking only")
+    SEGMENTATION_AVAILABLE = True
+    SEGMENTATION_MODEL = "yolov12"
+    print("YOLOv12-seg object detection available (recommended)")
+except ImportError as e:
+    print(f"YOLOv12-seg not available: {e}")
+    try:
+        from mask_rcnn import MaskRCNN
+
+        SEGMENTATION_AVAILABLE = True
+        SEGMENTATION_MODEL = "maskrcnn"
+        print("Mask R-CNN object detection available (legacy)")
+    except ImportError:
+        print("No segmentation model available - face tracking only")
 
 # creating the main window
 
@@ -108,8 +119,9 @@ class MainWindow(QtWidgets.QMainWindow):
         print(
             f"RealSense: {'Available' if self.imageMonitor.use_realsense else 'Not available'}"
         )
+        seg_model_name = SEGMENTATION_MODEL.upper() if SEGMENTATION_MODEL else "None"
         print(
-            f"Mask R-CNN: {'Available' if self.imageMonitor.mrcnn else 'Not available'}"
+            f"Segmentation Model: {seg_model_name if self.imageMonitor.segmentation_model else 'Not available'}"
         )
         print(f"Detection mode: {self.imageMonitor.detection_mode}")
         print(f"===================\n")
@@ -126,7 +138,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def toggle_detection_mode(self):
         """Toggle between face tracking and object detection modes"""
-        if self.imageMonitor.mrcnn:
+        if self.imageMonitor.segmentation_model:
             if self.imageMonitor.detection_mode == "face":
                 self.imageMonitor.detection_mode = "objects"
                 print("Switched to object detection mode")
@@ -134,7 +146,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.imageMonitor.detection_mode = "face"
                 print("Switched to face tracking mode")
         else:
-            print("Object detection not available - Mask R-CNN not loaded")
+            print("Object detection not available - No segmentation model loaded")
 
     def keyPressEvent(self, event):
         """Handle keyboard shortcuts"""
@@ -254,17 +266,22 @@ class imageMonitor(QtCore.QThread):
             self.camera = cv2.VideoCapture(0)
             print("Using standard webcam")
 
-        # Initialize Mask R-CNN if available
-        self.mrcnn = None
-        if MASK_RCNN_AVAILABLE:
+        # Initialize segmentation model if available
+        self.segmentation_model = None
+        if SEGMENTATION_AVAILABLE:
             try:
-                self.mrcnn = MaskRCNN()
-                print("Mask R-CNN initialized")
+                if SEGMENTATION_MODEL == "yolov12":
+                    self.segmentation_model = YOLOv12Seg(
+                        model_size="n"
+                    )  # 'n'=nano (fastest)
+                elif SEGMENTATION_MODEL == "maskrcnn":
+                    self.segmentation_model = MaskRCNN()
+                print(f"{SEGMENTATION_MODEL} initialized")
             except Exception as e:
-                print(f"Mask R-CNN initialization failed: {e}")
+                print(f"Segmentation model initialization failed: {e}")
 
         # Detection mode: 'face' or 'objects'
-        self.detection_mode = "objects" if self.mrcnn else "face"
+        self.detection_mode = "objects" if self.segmentation_model else "face"
         print(f"Detection mode: {self.detection_mode}")
 
     def camera_changed(self, camera_index):
@@ -294,7 +311,7 @@ class imageMonitor(QtCore.QThread):
                 Image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
                 # Apply detection based on mode
-                if self.detection_mode == "objects" and self.mrcnn:
+                if self.detection_mode == "objects" and self.segmentation_model:
                     Image = self.object_detection(Image, depth_frame)
                 else:
                     Image = self.face_landmarks(Image)
@@ -314,14 +331,16 @@ class imageMonitor(QtCore.QThread):
     def object_detection(self, image, depth_frame=None):
         """Perform object detection with optional depth information"""
         # Get object masks
-        boxes, classes, contours, centers = self.mrcnn.detect_objects_mask(image)
+        boxes, classes, contours, centers = self.segmentation_model.detect_objects_mask(
+            image
+        )
 
         # Draw object masks
-        image = self.mrcnn.draw_object_mask(image)
+        image = self.segmentation_model.draw_object_mask(image)
 
         # Show depth info if available
         if depth_frame is not None:
-            self.mrcnn.draw_object_info(image, depth_frame)
+            self.segmentation_model.draw_object_info(image, depth_frame)
 
         return image
 

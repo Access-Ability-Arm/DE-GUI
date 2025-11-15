@@ -6,8 +6,12 @@ The goal for this is to leverage OpenCV and a RealSense camera to allow the user
 ## Features
 
 **Two Application Versions:**
-- `main.py` - Face landmark tracking with standard webcam (works on MacBook, Windows, Linux)
-- `main-rd.py` - Object detection with Intel RealSense camera (requires RealSense hardware + DNN models)
+- `main.py` (RECOMMENDED) - Flexible AI-powered detection with automatic camera fallback
+  - **YOLOv11/v12-seg**: Modern real-time object detection and segmentation
+  - **Apple Silicon GPU acceleration** via Metal Performance Shaders (MPS)
+  - Face landmark tracking with MediaPipe
+  - Works with any camera (RealSense, webcam, Continuity Camera)
+- `main-rd.py` (LEGACY) - RealSense-only with Mask R-CNN (slower, requires specific hardware)
 
 ## Installation
 
@@ -46,9 +50,14 @@ The goal for this is to leverage OpenCV and a RealSense camera to allow the user
 
    **Note:** `pyrealsense2` is commented out in `requirements.txt` as it requires manual installation from source (v2.56.5). Follow the [Intel RealSense installation guide](https://github.com/IntelRealSense/librealsense/blob/master/doc/installation.md) for your platform.
 
-### Required Model Files for Object Detection (main-rd.py only)
+### Model Files
 
-If you plan to use `main-rd.py` with object detection, you need to download the Mask R-CNN model files:
+**main.py (YOLOv11/v12):**
+- Models download automatically on first run (~6MB for nano model)
+- No manual setup required!
+
+**main-rd.py (Legacy Mask R-CNN):**
+If you plan to use `main-rd.py` with Mask R-CNN, you need to download the model files manually:
 
 1. **Create the `dnn/` directory:**
    ```bash
@@ -118,9 +127,12 @@ python main.py
 - Automatically switches between detection modes based on available hardware
 
 **Detection Modes:**
-- **Face Tracking Mode** (default if no Mask R-CNN): Tracks 20 facial landmarks around the mouth using MediaPipe
-- **Object Detection Mode** (if Mask R-CNN available): Detects and segments objects using Mask R-CNN
-- **Press 'T'** while running to toggle between modes (if both are available)
+- **Face Tracking Mode**: Tracks 20 facial landmarks around the mouth using MediaPipe
+- **Object Detection Mode** (default): Detects and segments objects using YOLOv11/v12
+  - Automatically uses **Apple Metal GPU** on M-series Macs
+  - Falls back to CUDA on NVIDIA GPUs or CPU
+  - Much faster and more accurate than legacy Mask R-CNN
+- **Press 'T'** while running to toggle between modes
 
 **Camera Options:**
 - MacBook FaceTime camera
