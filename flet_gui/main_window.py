@@ -32,12 +32,15 @@ class FletMainWindow:
             page: Flet page object
         """
         self.page = page
-        self.page.title = "DE-GUI - Assistive Robotic Arm"
+        self.page.title = "Access Ability Arm"
         self.page.theme_mode = ft.ThemeMode.LIGHT
         self.page.padding = 20
         self.page.window.width = 1280
         self.page.window.height = 1000
         self.page.window.resizable = True
+
+        # Set up app menu bar
+        self._setup_app_menu()
 
         # Initialize components
         self.button_controller = None
@@ -50,6 +53,23 @@ class FletMainWindow:
         self._setup_components()
         self._build_ui()
         self._start_image_processor()
+
+    def _setup_app_menu(self):
+        """Set up application menu bar"""
+        self.page.appbar = ft.AppBar(
+            title=ft.Text("Access Ability Arm"),
+            center_title=False,
+            bgcolor=ft.colors.BLUE_GREY_800,
+            actions=[
+                ft.PopupMenuButton(
+                    items=[
+                        ft.PopupMenuItem(text="About", on_click=self._show_about),
+                        ft.PopupMenuItem(),  # Divider
+                        ft.PopupMenuItem(text="Quit", on_click=lambda _: self.page.window_close()),
+                    ]
+                ),
+            ],
+        )
 
     def _setup_components(self):
         """Initialize hardware and processing components"""
@@ -116,21 +136,6 @@ class FletMainWindow:
         self.page.add(
             ft.Column(
                 [
-                    # Header
-                    ft.Container(
-                        content=ft.Row(
-                            [
-                                ft.Icon(ft.Icons.PRECISION_MANUFACTURING, size=40),
-                                ft.Text(
-                                    "DE-GUI Assistive Robotic Arm",
-                                    size=24,
-                                    weight=ft.FontWeight.BOLD,
-                                ),
-                            ],
-                            alignment=ft.MainAxisAlignment.CENTER,
-                        ),
-                        margin=ft.margin.only(bottom=20),
-                    ),
                     # Main content area
                     ft.Row(
                         [
@@ -138,14 +143,8 @@ class FletMainWindow:
                             ft.Container(
                                 content=ft.Column(
                                     [
-                                        ft.Container(
-                                            content=self.video_feed,
-                                            border=ft.border.all(
-                                                2,
-                                                "#B0BEC5",  # Blue Grey 200
-                                            ),
-                                            border_radius=10,
-                                        ),
+                                        # Video feed without border/padding for tight fit
+                                        self.video_feed,
                                         ft.Row(
                                             [
                                                 self.camera_dropdown,
@@ -156,7 +155,7 @@ class FletMainWindow:
                                     ],
                                     spacing=10,
                                 ),
-                                padding=10,
+                                padding=0,
                             ),
                             # Right: Control panel
                             control_panel,
@@ -371,6 +370,40 @@ class FletMainWindow:
         if self.image_processor:
             self.image_processor.toggle_detection_mode()
             self._update_status()
+
+    def _show_about(self, e):
+        """Show About dialog"""
+        def close_dialog(e):
+            dialog.open = False
+            self.page.update()
+
+        dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Text("About Access Ability Arm"),
+            content=ft.Column(
+                [
+                    ft.Text("AI-powered assistive robotic arm control system", size=14),
+                    ft.Text("", size=4),  # Spacer
+                    ft.Text("Features:", weight=ft.FontWeight.BOLD),
+                    ft.Text("• YOLOv11 object detection & segmentation", size=12),
+                    ft.Text("• MediaPipe face tracking", size=12),
+                    ft.Text("• Intel RealSense depth sensing", size=12),
+                    ft.Text("• Apple Metal GPU acceleration", size=12),
+                    ft.Text("", size=4),  # Spacer
+                    ft.Text("Press 'T' to cycle detection modes", size=12, italic=True),
+                ],
+                tight=True,
+                spacing=5,
+            ),
+            actions=[
+                ft.TextButton("Close", on_click=close_dialog),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+
+        self.page.dialog = dialog
+        dialog.open = True
+        self.page.update()
 
     def _on_keyboard_event(self, e: ft.KeyboardEvent):
         """Handle keyboard shortcuts"""
