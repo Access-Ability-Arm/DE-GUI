@@ -1,170 +1,114 @@
 # DE-GUI
-This will track the progress as the GUI for the Drane Engineering assistive arm is devloped
 
-The goal for this is to leverage OpenCV and a RealSense camera to allow the user to pick out items in an image (on the GUI) and for the robot to be able to differentiate and pick up those items. Additionally, there will be basic controls (think up, down, left, right) on the GUI to allow the user to control the robot manually.
+AI-powered GUI for the Drane Engineering assistive robotic arm, featuring real-time object detection, face tracking, and depth sensing.
 
 ## Features
 
-**Two Application Versions:**
-- `main.py` (RECOMMENDED) - Flexible AI-powered detection with automatic camera fallback
-  - **YOLOv11/v12-seg**: Modern real-time object detection and segmentation
-  - **Apple Silicon GPU acceleration** via Metal Performance Shaders (MPS)
-  - Face landmark tracking with MediaPipe
-  - Works with any camera (RealSense, webcam, Continuity Camera)
-- `main-rd.py` (LEGACY) - RealSense-only with Mask R-CNN (slower, requires specific hardware)
+- **YOLOv11 Object Detection**: Real-time segmentation with Apple Metal GPU acceleration
+- **Face Tracking**: 20-point facial landmark detection with MediaPipe
+- **Depth Sensing**: Intel RealSense support for distance measurement (optional)
+- **Flexible Camera Support**: Auto-detects RealSense, webcams, or Continuity Camera
+- **Manual Controls**: Direct robotic arm control (x, y, z, grip)
+- **Toggle Modes**: Press 'T' to switch between face tracking and object detection
 
-## Installation
+## Quick Start
 
-### Setting Up the Virtual Environment
+### Installation
 
-**Python Version Requirement:** This project requires **Python 3.11** (mediapipe does not support Python 3.14+).
+See [docs/installation.md](docs/installation.md) for detailed setup instructions.
 
-1. **Install Python 3.11 (if not already installed):**
-   - On macOS with Homebrew:
-     ```bash
-     brew install python@3.11
-     ```
-   - On Windows/Linux: Download from [python.org](https://www.python.org/downloads/)
+**Quick version:**
+```bash
+# Create virtual environment with Python 3.11
+python3.11 -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
 
-2. **Create a virtual environment with Python 3.11:**
-   ```bash
-   python3.11 -m venv venv
-   # Or on macOS with Homebrew:
-   /opt/homebrew/bin/python3.11 -m venv venv
-   ```
+# Install dependencies
+pip install -r requirements.txt
+```
 
-3. **Activate the virtual environment:**
-   - On macOS/Linux:
-     ```bash
-     source venv/bin/activate
-     ```
-   - On Windows:
-     ```bash
-     venv\Scripts\activate
-     ```
+### Running the Application
 
-4. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-   **Note:** `pyrealsense2` is commented out in `requirements.txt` as it requires manual installation from source (v2.56.5). Follow the [Intel RealSense installation guide](https://github.com/IntelRealSense/librealsense/blob/master/doc/installation.md) for your platform.
-
-### Model Files
-
-**main.py (YOLOv11/v12):**
-- Models download automatically on first run (~6MB for nano model)
-- No manual setup required!
-
-**main-rd.py (Legacy Mask R-CNN):**
-If you plan to use `main-rd.py` with Mask R-CNN, you need to download the model files manually:
-
-1. **Create the `dnn/` directory:**
-   ```bash
-   mkdir dnn
-   ```
-
-2. **Download the required files:**
-   - `frozen_inference_graph_coco.pb` - Pre-trained Mask R-CNN model weights
-   - `mask_rcnn_inception_v2_coco_2018_01_28.pbtxt` - Model configuration
-   - `classes.txt` - COCO dataset class labels
-
-   Download from the [TensorFlow Model Zoo](https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/tf1_detection_zoo.md):
-   - Model: `mask_rcnn_inception_v2_coco`
-   
-   Or use these direct links:
-   ```bash
-   cd dnn
-   # Download model archive
-   wget http://download.tensorflow.org/models/object_detection/mask_rcnn_inception_v2_coco_2018_01_28.tar.gz
-   tar -xvf mask_rcnn_inception_v2_coco_2018_01_28.tar.gz
-   mv mask_rcnn_inception_v2_coco_2018_01_28/frozen_inference_graph.pb frozen_inference_graph_coco.pb
-   
-   # Download config file
-   wget https://raw.githubusercontent.com/opencv/opencv_extra/master/testdata/dnn/mask_rcnn_inception_v2_coco_2018_01_28.pbtxt
-   
-   # Download COCO classes
-   wget https://raw.githubusercontent.com/pjreddie/darknet/master/data/coco.names -O classes.txt
-   ```
-
-3. **Verify the files:**
-   ```bash
-   ls dnn/
-   # Should show:
-   # - frozen_inference_graph_coco.pb
-   # - mask_rcnn_inception_v2_coco_2018_01_28.pbtxt
-   # - classes.txt
-   ```
-
-**Note:** These model files are large (~200MB) and not included in the repository. They are only required for `main-rd.py` with object detection. `main.py` (face tracking) does not need these files.
-
-### Configuring Zed Editor (Optional)
-
-If you're using Zed editor with Jupyter notebook support:
-
-1. **Register the venv as a Jupyter kernel:**
-   ```bash
-   ./venv/bin/python -m ipykernel install --user --name de-gui-venv --display-name "Python (DE-GUI venv)"
-   ```
-
-2. **In Zed:**
-   - Open the command palette (Cmd+Shift+P)
-   - Run: `repl: refresh kernelspecs`
-   - Select "Python (DE-GUI venv)" from the kernel selector
-
-## Running the Application
-
-### Main Application (Flexible Camera Support)
 ```bash
 source venv/bin/activate  # Activate virtual environment
 python main.py
 ```
 
-**NEW: Automatic Camera Detection**
-- `main.py` now automatically detects and uses the best available camera:
-  - **RealSense camera** (if connected): Object detection with depth measurement
-  - **Standard webcam** (fallback): Face tracking or object detection without depth
-- Automatically switches between detection modes based on available hardware
+The application will automatically:
+- Detect available cameras (RealSense → webcam → Continuity Camera)
+- Enable GPU acceleration (Apple Metal, CUDA, or CPU)
+- Download YOLOv11 model on first run (~6MB)
 
-**Detection Modes:**
-- **Face Tracking Mode**: Tracks 20 facial landmarks around the mouth using MediaPipe
-- **Object Detection Mode** (default): Detects and segments objects using YOLOv11/v12
-  - Automatically uses **Apple Metal GPU** on M-series Macs
-  - Falls back to CUDA on NVIDIA GPUs or CPU
-  - Much faster and more accurate than legacy Mask R-CNN
-- **Press 'T'** while running to toggle between modes
+### Controls
 
-**Camera Options:**
-- MacBook FaceTime camera
-- External USB webcams
-- Continuity Camera (iPhone/iPad)
-- Intel RealSense D400-series (with depth sensing)
+- **Camera Selection**: Choose camera from dropdown menu
+- **Detection Mode**: Press 'T' to toggle between face tracking and object detection
+- **Robotic Arm**: Use GUI buttons for manual control (x±, y±, z±, grip)
 
-### Legacy RealSense-Only Version
-```bash
-source venv/bin/activate  # Activate virtual environment
-python main-rd.py
+## System Requirements
+
+- **Python**: 3.11 (required - MediaPipe does not support 3.14+)
+- **Camera**: Any webcam, or Intel RealSense D400-series for depth sensing
+- **OS**: macOS, Windows, or Linux
+- **GPU** (optional): Apple Silicon (Metal), NVIDIA (CUDA), or CPU
+
+## Detection Modes
+
+### Object Detection (Default)
+- Detects and segments 80 COCO object classes
+- Real-time bounding boxes and colored masks
+- Distance measurement with RealSense camera
+- Fixed reference point depth indicator
+
+### Face Tracking
+- 20 mouth landmark points using MediaPipe
+- Center point calculation and visualization
+- Works with any standard webcam
+
+## Architecture
+
+The application uses a modular architecture for maintainability:
+
 ```
-- **Requires** Intel RealSense D400-series camera (no fallback)
-- **Requires** DNN model files in `dnn/` directory
-- Object detection with depth measurement only
+access-ability-arm/
+├── config/       # Configuration & feature detection
+├── gui/          # PyQt6 main window & UI
+├── hardware/     # Camera & button controllers
+├── vision/       # Computer vision (YOLO, face detection)
+├── workers/      # Image processing thread
+└── main.py       # Application entry point
+```
 
-### Troubleshooting
+See [docs/refactoring.md](docs/refactoring.md) for architecture details.
 
-**Camera enumeration warnings on macOS:**
-- The warning about `AVCaptureDeviceTypeExternal` is harmless and can be ignored
-- Camera detection will still work correctly
+## Documentation
 
-**"OpenCV: out device of bound" errors:**
-- These occur when the app searches for cameras beyond what's available
-- Harmless - the app will use the available cameras (typically 0 and 1)
+- [Installation Guide](docs/installation.md) - Detailed setup instructions
+- [Refactoring Guide](docs/refactoring.md) - Architecture and code organization
+- [CLAUDE.md](CLAUDE.md) - Developer reference for AI assistants
 
-**macOS Continuity Camera:**
-- If your iPhone appears as Camera 1, it's using Continuity Camera
-- Select Camera 0 from the dropdown to use the built-in FaceTime camera
+## Troubleshooting
+
+**Camera not found:**
+- Check camera permissions in system settings
+- Try different camera indices in dropdown
+
+**Slow performance:**
+- Ensure GPU acceleration is enabled (check console output)
+- Try switching to face tracking mode (lighter processing)
+
+**Import errors:**
+- Verify virtual environment is activated
+- Reinstall dependencies: `pip install -r requirements.txt`
+
+For more help, see [docs/installation.md](docs/installation.md#troubleshooting).
 
 ## About
 
-If you are interested in becoming a part of this project, please check out Drane Engineering:
+Developed for Drane Engineering's assistive robotic arm project.
 
-Link to Drane Engineering website: https://www.draneengineering.com/
+**Website**: [draneengineering.com](https://www.draneengineering.com/)
+
+## License
+
+See [LICENSE.txt](LICENSE.txt) for details.
