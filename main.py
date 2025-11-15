@@ -43,9 +43,21 @@ def main(page: ft.Page):
 
 
 if __name__ == "__main__":
-    # Run Flet app
-    print("Starting DE-GUI (Flet version)...")
-    print("Press 'T' to toggle between face tracking and object detection")
-    print("Close the window to exit")
+    # Parse command-line arguments
+    import argparse
+    parser = argparse.ArgumentParser(description="Access Ability Arm - Assistive Robotic Arm Control")
+    parser.add_argument("--web", action="store_true", help="Run as web application in browser")
+    parser.add_argument("--port", type=int, default=8550, help="Port for web server (default: 8550)")
+    args = parser.parse_args()
 
-    ft.app(target=main)
+    # Run Flet app
+    if args.web:
+        print("Starting Access Ability Arm (Web version)...")
+        print(f"Open browser to: http://localhost:{args.port}")
+        print("Press Ctrl+C to stop the server")
+        ft.app(target=main, view=ft.AppView.WEB_BROWSER, port=args.port)
+    else:
+        print("Starting Access Ability Arm (Desktop version)...")
+        print("Press 'T' to toggle between face tracking and object detection")
+        print("Close the window to exit")
+        ft.app(target=main)
