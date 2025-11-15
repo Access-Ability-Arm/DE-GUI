@@ -49,6 +49,7 @@ web:
 # Package for macOS
 package-macos:
 	@echo "Building macOS application bundle..."
+	@export PATH="/opt/homebrew/opt/ruby/bin:/opt/homebrew/lib/ruby/gems/3.4.0/bin:$$PATH" && \
 	flet build macos \
 		--project "access-ability-arm" \
 		--product "Access Ability Arm" \
@@ -57,10 +58,6 @@ package-macos:
 		--exclude gui \
 		--exclude PyQt6 \
 		--exclude archive
-	@echo "Running CocoaPods installation..."
-	@if [ -f "build/flutter/macos/Podfile" ]; then \
-		cd build/flutter/macos && pod install; \
-	fi
 	@echo "✓ macOS package built in build/macos/"
 
 # Package for Linux
@@ -156,11 +153,12 @@ info:
 # Install CocoaPods dependencies (macOS/iOS)
 pod-install:
 	@echo "Installing CocoaPods dependencies..."
-	@if [ -f "build/flutter/macos/Podfile" ]; then \
+	@export PATH="/opt/homebrew/opt/ruby/bin:/opt/homebrew/lib/ruby/gems/3.4.0/bin:$$PATH" && \
+	if [ -f "build/flutter/macos/Podfile" ]; then \
 		echo "Installing macOS pods..."; \
 		cd build/flutter/macos && pod install; \
-	fi
-	@if [ -f "build/flutter/ios/Podfile" ]; then \
+	fi && \
+	if [ -f "build/flutter/ios/Podfile" ]; then \
 		echo "Installing iOS pods..."; \
 		cd build/flutter/ios && pod install; \
 	fi
