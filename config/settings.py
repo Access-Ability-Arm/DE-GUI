@@ -24,7 +24,7 @@ class AppConfig:
     # Model sizes: nano (~6MB), small (~22MB), medium (~50MB), large (~100MB), xlarge (~200MB)
 
     # Detection settings
-    detection_threshold: float = 0.5
+    detection_threshold: float = 0.6  # Higher threshold reduces false positives
 
     # Button behavior
     button_hold_threshold: float = 0.5  # seconds

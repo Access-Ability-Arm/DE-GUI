@@ -177,6 +177,7 @@ class YOLOv11Seg:
         results = self.model.track(
             bgr_frame,
             conf=self.detection_threshold,
+            iou=0.5,  # IoU threshold for NMS - higher values merge overlapping detections
             verbose=False,
             device=self.device,
             persist=True,  # Persist tracks between frames
@@ -326,6 +327,7 @@ class YOLOv11Seg:
         results = self.model.track(
             bgr_frame,
             conf=self.detection_threshold,
+            iou=0.5,  # IoU threshold for NMS
             verbose=False,
             device=self.device,
             persist=True,
