@@ -172,9 +172,8 @@ class YOLOv11Seg:
         """
         # Run inference with tracking for smoother video segmentation
         # Tracker reduces jitter and provides more stable bounding boxes/masks
-        # Use larger image size to prevent bottom cropping while maintaining performance
         # YOLO requires dimensions divisible by 32 (stride requirement)
-        # Set imgsz to longer dimension to minimize letterboxing for 16:9 aspect ratio
+        # Balance between coverage and performance - 640 is default, 1280 provides better coverage
         results = self.model.track(
             bgr_frame,
             conf=self.detection_threshold,
@@ -183,7 +182,7 @@ class YOLOv11Seg:
             device=self.device,
             persist=True,  # Persist tracks between frames
             tracker="bytetrack.yaml",  # Use ByteTrack for smooth tracking
-            imgsz=1920,  # Match camera width for 16:9 cameras, reduces letterboxing
+            imgsz=1280,  # Good balance: 2x default size, real-time performance
         )
 
         # Clear previous results
@@ -333,7 +332,7 @@ class YOLOv11Seg:
             device=self.device,
             persist=True,
             tracker="bytetrack.yaml",
-            imgsz=1920,  # Match detection size
+            imgsz=1280,  # Match detection size
         )
 
         track_ids = None
