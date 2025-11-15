@@ -81,7 +81,7 @@ class CameraManager:
 
         # Print detected cameras
         if len(self.cameras) > 0:
-            camera_names = [underline(f"Camera {c['camera_index']}") for c in self.cameras]
+            camera_names = [underline(c['camera_name']) for c in self.cameras]
             camera_list = ', '.join(camera_names)
             success(f"Detected {underline(str(len(self.cameras)))} camera(s): {camera_list}")
 
@@ -140,14 +140,55 @@ class CameraManager:
                         {"camera_index": camera_index, "camera_name": camera_name}
                     )
         else:
-            # For macOS and Linux, use generic camera names
+            # For macOS and Linux, try to get actual camera names
             for camera_index in camera_indexes:
-                camera_name = f"Camera {camera_index}"
+                camera_name = self._get_camera_name_opencv(camera_index)
                 cameras.append(
                     {"camera_index": camera_index, "camera_name": camera_name}
                 )
 
         return cameras
+
+    def _get_camera_name_opencv(self, camera_index: int) -> str:
+        """
+        Get camera name using OpenCV backend properties (macOS/Linux)
+
+        Args:
+            camera_index: Camera index
+
+        Returns:
+            Camera name or generic fallback
+        """
+        try:
+            # Suppress output during camera name retrieval
+            with suppress_output():
+                cap = cv2.VideoCapture(camera_index)
+                if cap.isOpened():
+                    # Try to get camera name from backend
+                    # CAP_PROP_BACKEND_NAME is available in newer OpenCV versions
+                    if hasattr(cv2, 'CAP_PROP_BACKEND_NAME'):
+                        backend_name = cap.get(cv2.CAP_PROP_BACKEND_NAME)
+
+                    # For macOS, try to infer from common patterns
+                    # OpenCV doesn't expose camera names directly, so we use heuristics
+                    if platform.system() == "Darwin":
+                        # Camera 0 is usually built-in FaceTime
+                        # Camera 1+ are usually external or Continuity Camera
+                        if camera_index == 0:
+                            camera_name = "FaceTime HD Camera (Built-in)"
+                        else:
+                            camera_name = f"External Camera {camera_index}"
+                    else:
+                        # Linux - use Video4Linux naming
+                        camera_name = f"Video Device {camera_index}"
+
+                    cap.release()
+                    return camera_name
+        except Exception:
+            pass
+
+        # Fallback to generic name
+        return f"Camera {camera_index}"
 
     async def _get_camera_information_for_windows(self):
         """Get detailed camera information on Windows platform"""
